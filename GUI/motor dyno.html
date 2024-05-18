@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motor Dyno</title>
+</head>
+<body>
+    <style>
+        body {
+            margin: 20px 0 0;
+            font-family: "Lucida Console";
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bolder;
+        }
+        .header h1{
+            font-size: 26px;
+        }
+        .header h2{
+            font-size: 15px;
+        }
+        .motor-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .motor-container img {
+            width: 200px;
+            height: 200px;
+            margin: 0 20px; 
+        }
+        .motor-container p {
+            margin: 0;
+            font-size: 15px;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .input-container {
+            width: 48%;
+            margin-bottom: 20px;
+            padding: 5px;
+            margin-top: 10px;
+        }
+        .output-container {
+            width: 48%;
+            margin-bottom: 20px;
+            padding: 5px;
+            margin-top: 10px;
+        }
+        .button-container {
+            width: 100%;
+            text-align: center;
+        }
+        .button_1 {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 14px;
+            background-color: #454444;
+            color: #fff;
+            border: 0.5px solid rgb(38, 37, 37);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s; 
+        }
+    
+        .button_1:hover {
+            background-color: #000000; 
+            color: #fff; 
+        }
+        
+        .slider {
+            width: 100%; 
+            height: 20px; 
+            margin-bottom: 5px; 
+        }
+        .slider-label {
+            font-size: 16px;
+            margin-bottom: 3px;
+            font-weight: bolder;
+        }
+        .slider-value {
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+        .display-label {
+            font-size: 16px;
+            font-weight: bolder;
+            margin-bottom: 3px;
+        }
+        .display-block {
+            font-size: 23px;
+            border: 1px solid #ccc;
+            padding: 3px; 
+            width: 100%;
+            min-height: 20px; 
+            margin-bottom: 5px;
+        }
+    
+        @media screen and (max-width: 768px) {
+            .header h1 {
+                font-size: 22px;
+            }
+            .header h2 {
+                font-size: 14px;
+            }
+            .motor-container img {
+                width: 150px;
+                height: 150px;
+                margin: 0 10px;
+            }
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .input-container, .output-container {
+                width: 90%;
+            }
+        }
+    </style>
+
+<div class="header">
+    <h1>Virtual Motor Dyno</h1>
+    <h2>SELECT MOTOR</h2>
+    <div class="motor-container">
+        <div>
+            <button><img src="ac induction.jpeg" alt="AC Induction Motor"></button>
+            <p>AC Induction Motor</p>
+        </div>
+        <div>
+        <button><img src="pmsm.jpg" alt="Permanent Magnet Synchronous Motor"></button>
+            <p>Permanent Magnet Synchronous Motor</p>
+        </div>
+    </div>
+    <div class="button-container">
+        <button class="button_1" id="runButton">Start</button>
+        <button class="button_1" id="stopButton">Stop</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="input-container">
+        <h2 class="slider-label-heading">INPUT</h2>
+        <div>
+            <span class="slider-label">Load:</span>
+            <input type="range" min="-198" max="198" value="20" class="slider" id="slider1">
+            <input type="text" class="slider-value" id="slider1Value" value="0">
+        </div>
+        <div>
+            <span class="slider-label">RPM:</span>
+            <input type="range" min="0" max="8000" value="1000" class="slider" id="slider2">
+            <input type="text" class="slider-value" id="slider2Value" value="0">
+        </div>
+        <div>
+            <span class="slider-label">Voltage:</span>
+            <input type="range" min="120" max="280" value="120" class="slider" id="slider3">
+            <input type="text" class="slider-value" id="slider3Value" value="0">
+        </div>
+    </div>
+
+    <div class="output-container">
+        <h2 class="display-label-heading">OUTPUT</h2>
+        <div>
+            <span class="display-label">Torque:</span>
+            <div class="display-block" id="torqueOutput">0</div>
+        </div>
+        <div>
+            <span class="display-label">Current:</span>
+            <div class="display-block" id="currentOutput">0</div>
+        </div>
+        <div>
+            <span class="display-label">Power Output:</span>
+            <div class="display-block" id="powerOutput">0</div>
+        </div>
+        <div>
+            <span class="display-label">Motor Efficiency:</span>
+            <div class="display-block" id="efficiencyOutput">0</div>
+        </div>
+        <div>
+            <span class="display-label">Regenerative Power:</span>
+            <div class="display-block" id="regenOutput">0</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let intervalId; // Variable to store the interval ID
+
+    function updateTextBox(sliderId) {
+        var slider = document.getElementById(sliderId);
+        var textBoxId = sliderId + "Value";
+        var textBox = document.getElementById(textBoxId);
+        textBox.value = slider.value;
+    }
+
+    function updateSliderValue(sliderId, valueId) {
+        const slider = document.getElementById(sliderId);
+        const value = document.getElementById(valueId);
+        value.value = slider.value;
+        slider.addEventListener('input', () => {
+            value.value = slider.value;
+        });
+    }
+
+    updateSliderValue('slider1', 'slider1Value');
+    updateSliderValue('slider2', 'slider2Value');
+    updateSliderValue('slider3', 'slider3Value');
+
+    function updateOutputs() {
+        const load = document.getElementById('slider1').value;
+        const rpm = document.getElementById('slider2').value;
+        const voltage = document.getElementById('slider3').value;
+        const coolantFlow = 1
+
+        fetch('http://34.100.156.228:3389/run-motor', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                load: load,
+                rpm: rpm,
+                voltage: voltage,
+                coolant_flow: coolantFlow
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Extracting the number from the response
+            const torque = parseFloat(data.torque.replace(/[\[\]]/g, ''));
+            const current = parseFloat(data.current.replace(/[\[\]]/g, ''));
+            const efficiency = parseFloat(data.efficiency.replace(/[\[\]]/g, ''));
+            const powerOutput = parseFloat(data.power_output.replace(/[\[\]]/g, ''));
+
+            // Displaying the extracted numbers
+            document.getElementById('torqueOutput').textContent = torque;
+            document.getElementById('currentOutput').textContent = current;
+            document.getElementById('efficiencyOutput').textContent = efficiency;
+            document.getElementById('powerOutput').textContent = powerOutput;
+            
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    document.getElementById('runButton').addEventListener('click', function() {
+        intervalId = setInterval(updateOutputs, 1000); // Update every second
+    });
+
+    document.getElementById('stopButton').addEventListener('click', function() {
+        clearInterval(intervalId); // Stop the interval
+    });
+</script>
+
+</body>
+</html>
