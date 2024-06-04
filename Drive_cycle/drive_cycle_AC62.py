@@ -320,9 +320,6 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid drive cycle selected")
 
-    
-
-
     for speed_kmph in speed_array:
         rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
         motor_program(rpm_value, 198, 200, 1)

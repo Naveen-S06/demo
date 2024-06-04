@@ -295,20 +295,20 @@ def motor_program(rpm, load, voltage, coolant_flow):
     #display_motor_specification()
     display_motor_dyno_output()
     return motor_name, motor_manufacturer_name, motor_min_voltage, motor_max_current, motor_max_speed_rpm, motor_max_torque_Nm, motor_max_regen_torque_Nm, motor_torque_out_Nm, motor_voltage_V, motor_current_A, motor_eff_percentage, motor_surface_temperature_K, motor_output_power_W, motor_regen_power_W, rpm, motor_current_A, motor_voltage_V, motor_input_power_W, motor_eff_percentage, motor_output_power_W, motor_power_loss_W, motor_torque_out_Nm, motor_regen_power_W, motor_surface_temperature_K, motor_surface_change_in_temp_K, motor_coolant_flow_mps, load, voltage, coolant_flow
-drive_cycle = 2  
-if drive_cycle == 1:
-    speed_array = eudc_speed
-elif drive_cycle == 2:
-    speed_array = ind_hwy_speed
-elif drive_cycle == 3:
-    speed_array = ind_urb_speed
-elif drive_cycle == 4:
-    speed_array = udds_speed
-else:
-    raise ValueError("Invalid drive cycle selected")
+if __name__ == "__main__":
+    drive_cycle = 1
+    rolling_radius_m = float(sys.argv[5]) if len(sys.argv) > 5 else 0.1  
+    if drive_cycle == 1:
+        speed_array = eudc_speed
+    elif drive_cycle == 2:
+        speed_array = ind_hwy_speed
+    elif drive_cycle == 3:
+        speed_array = ind_urb_speed
+    elif drive_cycle == 4:
+        speed_array = udds_speed
+    else:
+        raise ValueError("Invalid drive cycle selected")
 
-rolling_radius_m = 0.1
-
-for speed_kmph in speed_array:
-    rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
-    motor_program(rpm_value, 100, 200, 1)
+    for speed_kmph in speed_array:
+        rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
+        motor_program(rpm_value, 32, 150, 1)
