@@ -1,16 +1,35 @@
 import resources
 import numpy as np
+import pandas as pd
 from random import uniform as uf
 from vehicle_speed import eudc_speed, ind_hwy_speed, ind_urb_speed, udds_speed
+
+class PIDController:
+    def __init__(self, Kp, Ki, Kd):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.prev_error = 0
+        self.integral = 0
+
+    def update(self, error):
+        self.integral += error
+        derivative = error - self.prev_error
+        control_signal = self.Kp * error + self.Ki * self.integral + self.Kd * derivative
+        self.prev_error = error
+        return control_signal
 
 def kmph_to_rpm(speed_kmph, rolling_radius_m):
     speed_mps = 0.277778 * speed_kmph
     speed_radps = speed_mps / rolling_radius_m
     rpm = 9.5493 * speed_radps
-    
     return rpm
 
-def motor_program(rpm, load, voltage, coolant_flow):
+def control_strategy(desired_speed, current_speed):
+    speed_difference = desired_speed - current_speed
+    return speed_difference
+
+def motor_program(rpm, load, voltage, coolant_flow, rolling_radius_m):
     ATM_TEMPERATURE_K = 273
     FIRST_ELEMENT = 0
     MOTOR_SURFACE_TEMP_K = 303
@@ -53,7 +72,7 @@ def motor_program(rpm, load, voltage, coolant_flow):
         print('Motor Dyno Output')
         print('******************')
         print(f'Torque Available (Nm) : {motor_torque_out_Nm}')
-        print(f'Vehicle Speed (kmph) : {vehicle_speed_kmph}')
+        print(f'Vehicle Speed (kmph) : {veh_speed_kmph}')
         print(f'Voltage (V) : {motor_voltage_V}')
         print(f'Current (A) : {motor_current_A}')
         print(f'Power Input (W) : {motor_input_power_W}')
@@ -276,7 +295,7 @@ def motor_program(rpm, load, voltage, coolant_flow):
         
 
     # Array Outputs
-
+    gear_ratio = 6.1
     motor_voltage_V = np.append(motor_voltage_V,motor_actual_voltage,axis = 0)
     motor_current_A = np.append(motor_current_A,motor_corrected_current_req,axis = 0)
     motor_input_power_W = np.append(motor_input_power_W,motor_corrected_input_pwr,axis = 0)
@@ -288,9 +307,10 @@ def motor_program(rpm, load, voltage, coolant_flow):
     motor_surface_change_in_temp_K = np.append(motor_surface_change_in_temp_K,motor_surface_delta_T_K,axis = 0)
     motor_surface_temperature_K = np.append(motor_surface_temperature_K,motor_surface_temperature,axis = 0)
     motor_coolant_flow_mps = np.append(motor_coolant_flow_mps, motor_coolant_flow, axis = 0)
-    speed_rdps = motor_output_power_W/motor_torque_out_Nm
+    vehicle_torque = motor_torque_out_Nm * gear_ratio
+    speed_rdps = motor_output_power_W/vehicle_torque
     mps_speed = speed_rdps * rolling_radius_m
-    vehicle_speed_kmph = mps_speed/0.277778
+    veh_speed_kmph = mps_speed/0.277778
 
     motor_surface_temperature = 303
     '''# Update 'temperature.xlsx'
@@ -304,11 +324,11 @@ def motor_program(rpm, load, voltage, coolant_flow):
 
     display_motor_dyno_input()
     #display_motor_specification()
-    display_motor_dyno_output()
-    return motor_name, motor_manufacturer_name, motor_min_voltage, motor_max_current, motor_max_speed_rpm, motor_max_torque_Nm, motor_max_regen_torque_Nm, motor_torque_out_Nm, motor_voltage_V, motor_current_A, motor_eff_percentage, motor_surface_temperature_K, motor_output_power_W, motor_regen_power_W, rpm, motor_current_A, motor_voltage_V, motor_input_power_W, motor_eff_percentage, motor_output_power_W, motor_power_loss_W, motor_torque_out_Nm, motor_regen_power_W, motor_surface_temperature_K, motor_surface_change_in_temp_K, motor_coolant_flow_mps, load, voltage, coolant_flow
-if __name__ == "__main__":
-    drive_cycle = 1
-    rolling_radius_m = float(sys.argv[5]) if len(sys.argv) > 5 else 0.1  
+    #display_motor_dyno_output()
+    return veh_speed_kmph
+pid = PIDController(Kp=0.5, Ki=0.1, Kd=0.2)
+
+def cycle(drive_cycle,rolling_radius_m):
     if drive_cycle == 1:
         speed_array = eudc_speed
     elif drive_cycle == 2:
@@ -320,6 +340,17 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid drive cycle selected")
 
+    
     for speed_kmph in speed_array:
+        print("Input Speed",speed_kmph)
         rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
-        motor_program(rpm_value, 198, 200, 1)
+        vehicle_speed_kmph = motor_program(rpm_value, 190, 200, 1, rolling_radius_m)
+        adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
+        #motor_program(kmph_to_rpm(adjusted_speed_kmph, rolling_radius_m), 100, 200, 1)
+        for _ in range(100):
+            control_signal = pid.update(adjusted_speed_kmph)
+            vehicle_speed_kmph += control_signal
+            adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
+        print("Adjusted Output Value:", vehicle_speed_kmph)
+    
+cycle(1, 0.1)    
