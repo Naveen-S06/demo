@@ -18,6 +18,13 @@ class PIDController:
         self.prev_error = error
         return control_signal
 
+loads=[]
+torque=[]
+eff=[]
+current=[]
+veh=[]
+acc=[]
+
 def kmph_to_rpm(speed_kmph, rolling_radius_m):
     speed_mps = 0.277778 * speed_kmph
     speed_radps = speed_mps / rolling_radius_m
@@ -73,7 +80,7 @@ def motor_program(rpm, load, voltage, coolant_flow, rolling_radius_m, gear_ratio
         print('******************')
         print(f'Required Torque (Nm) : {load}')
         print(f'Torque Available (Nm) : {motor_torque_out_Nm}')
-        print(f'Vehicle Speed (kmph) : {veh_speed_kmph}')
+        #print(f'Vehicle Speed (kmph) : {veh_speed_kmph}')
         #print(f'Voltage (V) : {motor_voltage_V}')
         print(f'Current (A) : {motor_current_A}')
         #print(f'Power Input (W) : {motor_input_power_W}')
@@ -314,7 +321,12 @@ def motor_program(rpm, load, voltage, coolant_flow, rolling_radius_m, gear_ratio
     display_motor_dyno_input()
     #display_motor_specification()
     display_motor_dyno_output()
+    loads.append(load)
+    torque.append(motor_torque_out_Nm.tolist())
+    eff.append(motor_eff_percentage.tolist())
+    current.append(motor_current_A.tolist())
     return veh_speed_kmph
+
 pid = PIDController(Kp=0.5, Ki=0.1, Kd=0.2)
 def cycle(drive_cycle, rolling_radius_m, gear_ratio): 
     if drive_cycle == 1:
@@ -332,18 +344,34 @@ def cycle(drive_cycle, rolling_radius_m, gear_ratio):
     for speed_kmph in speed_array:
         print("Input Speed",speed_kmph)
         rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
-        vehicle_speed_kmph = motor_program(rpm_value, 32, 200, 1, rolling_radius_m, gear_ratio)
+        vehicle_speed_kmph = motor_program(rpm_value, 5, 200, 1, rolling_radius_m, gear_ratio)
         adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
         #motor_program(kmph_to_rpm(adjusted_speed_kmph, rolling_radius_m), 100, 200, 1)
         for _ in range(100):
             control_signal = pid.update(adjusted_speed_kmph)
             vehicle_speed_kmph += control_signal
             adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
-        print("Adjusted Output Value:", vehicle_speed_kmph)
+        veh.append(vehicle_speed_kmph.tolist())
+        print("Vehicle Speed:", vehicle_speed_kmph)
 
         if previous_c is not None: 
             result = vehicle_speed_kmph - previous_c  
-            print("Acceleration kmph/s:",result)  
+            print("Acceleration kmph/s:",result)
+            acc.append(result.tolist())  
         previous_c = vehicle_speed_kmph
+
+    current_data = [item for sublist in current for item in sublist]
+    torque_data = [item for sublist in torque for item in sublist]
+    eff_data = [item for sublist in eff for item in sublist]
+    veh_speed_data = [item for sublist in veh for item in sublist]
+    veh_acc_data = [item for sublist in acc for item in sublist]
+
+    with open('values.py', 'w') as f:
+        f.write('req_torque = {}\n'.format(loads))
+        f.write('avail_torque = {}\n'.format(torque_data))   
+        f.write('eff = {}\n'.format(eff_data))   
+        f.write('current = {}\n'.format(current_data))
+        f.write('veh_speed = {}\n'.format(veh_speed_data)) 
+        f.write('veh_acc = {}\n'.format(veh_acc_data)) 
 
 cycle(2,0.1,6)
