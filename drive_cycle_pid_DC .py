@@ -24,6 +24,7 @@ eff=[]
 current=[]
 veh=[]
 acc=[]
+inp_speed=[]
 
 def kmph_to_rpm(speed_kmph, rolling_radius_m):
     speed_mps = 0.277778 * speed_kmph
@@ -352,6 +353,7 @@ def cycle(drive_cycle, rolling_radius_m, gear_ratio):
             vehicle_speed_kmph += control_signal
             adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
         veh.append(vehicle_speed_kmph.tolist())
+        inp_speed.append(speed_kmph)
         print("Vehicle Speed:", vehicle_speed_kmph)
 
         if previous_c is not None: 
@@ -371,7 +373,8 @@ def cycle(drive_cycle, rolling_radius_m, gear_ratio):
         f.write('avail_torque = {}\n'.format(torque_data))   
         f.write('eff = {}\n'.format(eff_data))   
         f.write('current = {}\n'.format(current_data))
-        f.write('veh_speed = {}\n'.format(veh_speed_data)) 
+        f.write('veh_speed = {}\n'.format(veh_speed_data))
+        f.write('inp_speed = {}\n'.format(inp_speed))    
         f.write('veh_acc = {}\n'.format(veh_acc_data)) 
 
 cycle(2,0.1,6)
