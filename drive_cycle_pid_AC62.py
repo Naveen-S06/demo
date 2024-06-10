@@ -26,6 +26,7 @@ current=[]
 veh=[]
 acc=[]
 inp_speed=[]
+time=[]
 
 def kmph_to_rpm(speed_kmph, rolling_radius_m):
     speed_mps = 0.277778 * speed_kmph
@@ -354,8 +355,8 @@ def cycle(drive_cycle,rolling_radius_m, gear_ratio):
         raise ValueError("Invalid drive cycle selected")
     previous_c = None
     
-    for speed_kmph in speed_array:
-        
+    for i,speed_kmph in enumerate(speed_array):
+        time.append(i)
         print("Input Speed",speed_kmph)
         rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
         vehicle_speed_kmph = motor_program(rpm_value, 180, 200, 1, rolling_radius_m, gear_ratio)
@@ -388,5 +389,6 @@ def cycle(drive_cycle,rolling_radius_m, gear_ratio):
         f.write('current = {}\n'.format(current_data))
         f.write('veh_speed = {}\n'.format(veh_speed_data))
         f.write('inp_speed = {}\n'.format(inp_speed))  
-        f.write('veh_acc = {}\n'.format(veh_acc_data))        
+        f.write('veh_acc = {}\n'.format(veh_acc_data))
+        f.write('time = {}\n'.format(time))        
 cycle(1, 0.1, 6)    
