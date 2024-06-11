@@ -19,7 +19,7 @@ class PIDController:
         self.prev_error = error
         return control_signal
 
-loads=[]
+m_torque=[]
 torque=[]
 eff=[]
 current=[]
@@ -27,17 +27,49 @@ veh=[]
 acc=[]
 inp_speed=[]
 time=[]
+mnu=0.3
+density_of_air = 1.225
+cd = 0.25
+grade_degree = 0
 
-def kmph_to_rpm(speed_kmph, rolling_radius_m):
+
+def kmph_to_rpm(speed_kmph, rolling_radius_m, gear_ratio):
     speed_mps = 0.277778 * speed_kmph
     speed_radps = speed_mps / rolling_radius_m
-    rpm = 9.5493 * speed_radps
+    veh_rpm = 9.5493 * speed_radps
+    rpm = veh_rpm * gear_ratio
     return rpm
 
 def control_strategy(desired_speed, current_speed):
     speed_difference = desired_speed - current_speed
     return speed_difference
 
+# rolling resistance calculation
+
+def friction_force(mnu,mass):
+    force = mnu*mass*9.81
+    return force
+
+def aero_force(cd,density_of_air,frontal_area,speed):
+    force = 0.5*cd*density_of_air*frontal_area*speed**2
+    return force
+
+def grade_force(mass,grade_degree):
+    grade = 0.0174533*grade_degree
+    grade = np.asfarray(grade)
+    sin_grade = np.sin(grade)
+    force = mass*9.81*sin_grade
+    return force
+
+def rr_force(f_rr,f_aero,f_grade):
+    force = f_rr + f_aero + f_grade
+    return force
+
+#torque calculation
+
+def req_torque(force,rolling_radius,gear_ratio):
+    torque = force*rolling_radius/gear_ratio
+    return torque
 
 def motor_program(rpm, load, voltage, coolant_flow, rolling_radius_m, gear_ratio):
     ATM_TEMPERATURE_K = 273
@@ -83,7 +115,7 @@ def motor_program(rpm, load, voltage, coolant_flow, rolling_radius_m, gear_ratio
         print('******************')
         print(f'Required Torque (Nm) : {load}')
         print(f'Torque Available (Nm) : {motor_torque_out_Nm}')
-        #print(f'Vehicle Speed (kmph) : {veh_speed_kmph}')
+        print(f'Vehicle Speed (kmph) : {veh_speed_kmph}')
         #print(f'Voltage (V) : {motor_voltage_V}')
         print(f'Current (A) : {motor_current_A}')
         #print(f'Power Input (W) : {motor_input_power_W}')
@@ -317,32 +349,27 @@ def motor_program(rpm, load, voltage, coolant_flow, rolling_radius_m, gear_ratio
     motor_surface_change_in_temp_K = np.append(motor_surface_change_in_temp_K,motor_surface_delta_T_K,axis = 0)
     motor_surface_temperature_K = np.append(motor_surface_temperature_K,motor_surface_temperature,axis = 0)
     motor_coolant_flow_mps = np.append(motor_coolant_flow_mps, motor_coolant_flow, axis = 0)
+    
+    
     vehicle_torque = motor_torque_out_Nm * gear_ratio
     speed_rdps = motor_output_power_W/vehicle_torque
     mps_speed = speed_rdps * rolling_radius_m
     veh_speed_kmph = mps_speed/0.277778
-
+    
     motor_surface_temperature = 303
-    '''# Update 'temperature.xlsx'
-    file_path = 'temperature.xlsx'
-    workbook = load_workbook(file_path)
-    sheet = workbook['Sheet1']
-    sheet['A2'] = motor_surface_temperature[-1]
-    workbook.save(file_path)'''
 
     # print function
 
-    display_motor_dyno_input()
+    #display_motor_dyno_input()
     #display_motor_specification()
-    display_motor_dyno_output()
-    loads.append(load)
+    #display_motor_dyno_output()
     torque.append(motor_torque_out_Nm)
     eff.append(motor_eff_percentage)
     current.append(motor_current_A)
     return veh_speed_kmph
 pid = PIDController(Kp=0.5, Ki=0.1, Kd=0.2)
 
-def cycle(drive_cycle,rolling_radius_m, gear_ratio):
+def cycle(drive_cycle,rolling_radius_m, gear_ratio, mass, frontal_area):
     if drive_cycle == 1:
         speed_array = eudc_speed
     elif drive_cycle == 2:
@@ -354,19 +381,37 @@ def cycle(drive_cycle,rolling_radius_m, gear_ratio):
     else:
         raise ValueError("Invalid drive cycle selected")
     previous_c = None
-    
+    vehicle_speed_kmph = 0
     for i,speed_kmph in enumerate(speed_array):
         time.append(i)
-        print("Input Speed",speed_kmph)
-        rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m)
-        vehicle_speed_kmph = motor_program(rpm_value, 180, 200, 1, rolling_radius_m, gear_ratio)
+        print("Input Speed", speed_kmph)
+        rpm_value = kmph_to_rpm(speed_kmph, rolling_radius_m, gear_ratio)
+        print("RPM:", rpm_value)
+        f_force = friction_force(mnu,mass)
+        aero = aero_force(cd,density_of_air,frontal_area,speed_kmph)
+        grade = grade_force(mass,grade_degree)
+        force = rr_force(f_force,aero,grade)
+        motor_torque = req_torque(force,rolling_radius_m,gear_ratio)
+        print("Motor Torque:", motor_torque)
         adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
-        #motor_program(kmph_to_rpm(adjusted_speed_kmph, rolling_radius_m), 100, 200, 1)
+        print("Error:", adjusted_speed_kmph)
         for _ in range(100):
             control_signal = pid.update(adjusted_speed_kmph)
             vehicle_speed_kmph += control_signal
             adjusted_speed_kmph = control_strategy(speed_kmph, vehicle_speed_kmph)
-        print("Vehicle Speed:", vehicle_speed_kmph)
+        print("Output Speed from PID",vehicle_speed_kmph)
+        motor_rpm = kmph_to_rpm(vehicle_speed_kmph, rolling_radius_m, gear_ratio)
+        if isinstance(motor_rpm, np.ndarray):
+            motor_rpm = abs(motor_rpm[0])
+        if (motor_rpm>=8000):
+            motor_rpm=8000
+        print("Motor RPM from PID", motor_rpm)
+        vehicle_speed_kmph = motor_program(motor_rpm, motor_torque, 200, 1, rolling_radius_m, gear_ratio)
+        print("Output Speed", vehicle_speed_kmph)
+
+
+
+        m_torque.append(motor_torque)
         veh.append(vehicle_speed_kmph)
         inp_speed.append(speed_kmph)
         if previous_c is not None: 
@@ -374,7 +419,9 @@ def cycle(drive_cycle,rolling_radius_m, gear_ratio):
             print("Acceleration kmph/s:",result)
             acc.append(result)  
         previous_c = vehicle_speed_kmph
-         
+
+        
+        
     current_data = [item for sublist in current for item in sublist]
     torque_data = [item for sublist in torque for item in sublist]
     eff_data = [item for sublist in eff for item in sublist]
@@ -383,7 +430,7 @@ def cycle(drive_cycle,rolling_radius_m, gear_ratio):
     veh_acc_data = [item for sublist in acc for item in sublist]
 
     with open('values.py', 'w') as f:
-        f.write('req_torque = {}\n'.format(loads))
+        f.write('req_torque = {}\n'.format(m_torque))
         f.write('avail_torque = {}\n'.format(torque_data))   
         f.write('eff = {}\n'.format(eff_data))   
         f.write('current = {}\n'.format(current_data))
@@ -391,4 +438,4 @@ def cycle(drive_cycle,rolling_radius_m, gear_ratio):
         f.write('inp_speed = {}\n'.format(inp_speed))  
         f.write('veh_acc = {}\n'.format(veh_acc_data))
         f.write('time = {}\n'.format(time))        
-cycle(1, 0.1, 6)    
+cycle(1, 0.1, 6, 900, 0.2)    
