@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Page</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .top-block {
+            display: flex;
+            justify-content: space-between;
+            background-color: #f2f2f2;
+            padding: 20px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .left-side, .right-side {
+            display: flex;
+            flex-direction: column;
+        }
+        .left-side span, .right-side span {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .dropdown-container, .input-container {
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+        }
+        .dropdown-container select, .input-container input {
+            margin-left: 10px;
+            padding: 5px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .dropdown-container select:hover, .input-container input:hover {
+            border-color: #888;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .dropdown-block {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+        .dropdown-item label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .custom-select {
+            position: relative;
+            width: 220px;
+        }
+        .custom-select select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            appearance: none;
+            background-color: #fff;
+        }
+        .custom-select::after {
+            content: '\25BC'; /* Down arrow */
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            pointer-events: none;
+            font-size: 16px;
+            color: #888;
+        }
+        .custom-select select:hover {
+            border-color: #888;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .dropdown-block button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 20px;
+            border: none;
+            border-radius: 12px;
+            background-color: #007BFF;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .dropdown-block button:hover {
+            background-color: #0056b3;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .graph-block {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .graph-container {
+            width: 100%;
+            height: 650px;
+            margin-bottom: 20px;
+        }
+        canvas {
+            width: 100% !important;
+            height: 650px !important;
+            background-color: #fff;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        #charts-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .chart {
+            width: 49%;
+            height: 400px;
+            display: none;
+        }
+        /* Loading screen styles */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        #loading-screen img {
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-block" id="vehicle-info">
+        <div class="left-side">
+            <span>Vehicle Type:
+                <div class="dropdown-container">
+                    <select id="vehicle-type-select">
+                        <option value="Select">Select Vehicle Type</option>
+                        <option value="SUV">SUV</option>
+                        <option value="Sedan">Sedan</option>
+                        <option value="Van">Van</option>
+                        <option value="Mini Bus">Mini Bus</option>
+                    </select>
+                </div>
+            </span>
+            <span>Passenger Capacity:
+                <div class="input-container">
+                    <input type="number" id="passenger-capacity-input" placeholder="Enter Capacity">
+                </div>
+            </span>
+            <span>Mass of the Vehicle (kg):
+                <div class="input-container">
+                    <input type="number" id="mass-input" placeholder="Enter Vehicle's Mass">
+                </div>
+            </span>
+        </div>
+        <div class="right-side">
+            <span>Frontal Area:
+                <div class="input-container">
+                    <input type="text" id="frontal-input" placeholder="Enter Frontal Area">
+                </div>
+            </span>
+            <span>Gear ratio:
+                <div class="input-container">
+                    <input type="number" id="gear-ratio-input" placeholder="Enter Gear Ratio">
+                </div>
+            </span>
+                <span>Rolling radius:
+                    <div class="input-container">
+                        <input type="number" id="rolling-radius-input" placeholder="Enter Rolling Radius">
+                    </div>
+                </span>
+        </div>
+    </div>
+
+    <div class="dropdown-block">
+        <div class="dropdown-item">
+            <label for="data-select-1">Motor Select:</label>
+            <div class="custom-select">
+                <select id="data-select-1">
+                    <option value="Select">Select Motor</option>
+                    <option value="1">AC Induction</option>
+                    <option value="2">PMSM</option>
+                    <option value="3">BLDC</option>
+                </select>
+            </div>
+        </div>
+        <div class="dropdown-item">
+            <label for="data-select-2">Drive Cycle:</label>
+            <div class="custom-select">
+                <select id="data-select-2">
+                    <option value="Select">Select Drive Cycle</option>
+                    <option value="1">CYC_EUDC</option>
+                    <option value="2">CYC_INDIA_HWY</option>
+                    <option value="3">CYC_INDIA_URBAN</option>
+                    <option value="4">CYC_UDDS</option>
+                </select>
+            </div>
+        </div>
+        <button id="plot-button">Plot</button>
+        <button id="back-button">Back</button>
+    </div>
+    <div id="loading-screen">
+        <img src="loading.gif" alt="Loading...">
+    </div>
+    <div id="charts-container">
+        <div id="torque-chart" class="chart"></div>
+        <div id="current-eff-chart" class="chart"></div>
+        <div id="speed-acc-chart" class="chart"></div>
+        <div id="acc-chart" class="chart"></div>
+    </div>
+    <script>
+        document.getElementById('plot-button').addEventListener('click', function() {
+            const gearRatio = document.getElementById('gear-ratio-input').value;
+            const rollingRadius = document.getElementById('rolling-radius-input').value;
+            const mass = document.getElementById('mass-input').value;
+            const frontalArea = document.getElementById('frontal-input').value;
+            const driveCycle = document.getElementById('data-select-2').value;
+            const motorType = document.getElementById('data-select-1').value;
+
+            const driveCycleMap = {
+                "0": 0,  // Select Drive Cycle
+                "1": 1,  // CYC_EUDC
+                "2": 2,  // CYC_INDIA_HWY
+                "3": 3,  // CYC_INDIA_URBAN
+                "4": 4   // CYC_UDDS
+            };
+
+            const motorTypeMap = {
+                "0": 0,  // Select Motor
+                "1": 1,  // AC Induction
+                "2": 2,  // PMSM
+                "3": 3   // BLDC
+            };
+
+            const mappedDriveCycle = driveCycleMap[driveCycle];
+            const mappedMotorType = motorTypeMap[motorType];
+
+            const data = {
+                input1: mappedDriveCycle,
+                input2: rollingRadius,
+                input3: gearRatio,
+                input4: mass,
+                input5: frontalArea,
+                motorType: mappedMotorType
+            };
+            document.getElementById('loading-screen').style.display = 'flex';
+            fetch('http://34.100.156.228:3389/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+
+                // Remove previous charts
+                Plotly.purge('torque-chart');
+                Plotly.purge('speed-acc-chart');
+                Plotly.purge('current-eff-chart');
+                Plotly.purge('acc-chart');
+
+                /* Generate time values with increments of 100 seconds
+                const numDataPoints = data.req_torque.length;
+                const time = Array.from({ length: numDataPoints }, (_, index) => index * 100);
+                const timeValues = data.time.map((value, index) => value + (index * 2));*/
+                const maxValue = data.time[data.time.length - 1];
+                const timeValues = Array.from({ length: Math.ceil(maxValue) }, (_, index) => index * 20);
+
+                // Plot torque chart
+                Plotly.newPlot('torque-chart', [
+                    {
+                        x: timeValues,
+                        y: data.req_torque,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Required Torque',
+                        line: { color: 'rgb(75, 192, 192)' }
+                    },
+                    {
+                        x: timeValues,
+                        y: data.avail_torque,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Available Torque',
+                        yaxis: 'y2',
+                        line: { color: 'rgb(192, 75, 75)' }
+                    }
+                ], {
+                    title: 'Torque Chart',
+                    xaxis: { title: 'Time (s)' },
+                    yaxis: { title: 'Required Torque' },
+                    yaxis2: {
+                        title: 'Available Torque',
+                        overlaying: 'y',
+                        side: 'right'
+                    },
+                    legend: {
+                    x: 1, // Position on the x-axis (1 is far right)
+                    y: 1.2, // Position on the y-axis (1 is top)
+                    //xanchor: 'right', // Aligns the legend box to the right
+                    //yanchor: 'top', // Aligns the legend box to the top
+                    //orientation: 'v' // 'v' for vertical (default), 'h' for horizontal
+                }
+                });
+
+                // Plot speed and acceleration chart
+                Plotly.newPlot('speed-acc-chart', [
+                    {
+                        x: timeValues,
+                        y: data.veh_speed,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Vehicle Speed',
+                        line: { color: 'rgb(75, 75, 192)' }
+                    },
+                    {
+                        x: timeValues,
+                        y: data.inp_speed,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Input Speed',
+                        yaxis: 'y2',
+                        line: { color: 'rgb(192, 192, 75)' }
+                    }
+                ], {
+                    title: 'Vehicle Speed and Input Speed Chart',
+                    xaxis: { title: 'Time (s)' },
+                    yaxis: { title: 'Vehicle Speed' },
+                    yaxis2: {
+                        title: 'Input Speed',
+                        overlaying: 'y',
+                        side: 'right'
+                    },
+                    legend: {
+                    x: 1, // Position on the x-axis (1 is far right)
+                    y: 1.2, // Position on the y-axis (1 is top)
+                    //xanchor: 'right', // Aligns the legend box to the right
+                    //yanchor: 'top', // Aligns the legend box to the top
+                    //orientation: 'v' // 'v' for vertical (default), 'h' for horizontal
+                }
+                });
+
+                // Plot current and efficiency chart
+                Plotly.newPlot('current-eff-chart', [
+                    {
+                        x: timeValues,
+                        y: data.current,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Current (A)',
+                        line: { color: 'rgb(11, 67, 131)' }
+                    },
+                    {
+                        x: timeValues,
+                        y: data.eff,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Efficiency (%)',
+                        yaxis: 'y2',
+                        line: { color: 'rgb(101, 144, 219)' }
+                    }
+                ], {
+                    title: 'Current and Efficiency Chart',
+                    xaxis: { title: 'Time (s)' },
+                    yaxis: { title: 'Current (A)' },
+                    yaxis2: {
+                        title: 'Efficiency (%)',
+                        overlaying: 'y',
+                        side: 'right'
+                    },
+                    legend: {
+                    x: 1, // Position on the x-axis (1 is far right)
+                    y: 1.2, // Position on the y-axis (1 is top)
+                    //xanchor: 'right', // Aligns the legend box to the right
+                    //yanchor: 'top', // Aligns the legend box to the top
+                    //orientation: 'v' // 'v' for vertical (default), 'h' for horizontal
+                }
+                });
+                // Plot speed and acceleration chart
+                Plotly.newPlot('acc-chart', [
+                    {
+                        x: timeValues,
+                        y: data.veh_acc,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Vehicle Acceleration',
+                        line: { color: 'rgb(75, 192, 192)' }
+                    }
+                    ], {
+                    title: 'Vehicle Acceleration Chart',
+                    xaxis: { title: 'Time (s)' },
+                    yaxis: { title: 'Vehicle Acceleration' }
+                });
+                // Hide loading screen and show charts
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('torque-chart').style.display = 'block';
+                document.getElementById('speed-acc-chart').style.display = 'block';
+                document.getElementById('current-eff-chart').style.display = 'block';
+                document.getElementById('acc-chart').style.display = 'block';
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                document.getElementById('loading-screen').innerHTML = '<img src="error.gif" alt="Failed GIF">';
+            });
+        });
+        document.getElementById('back-button').addEventListener('click', function() {
+            window.location.href = 'new.html'; // Open new.html in the same tab
+        });
+    </script>
+</body>
+</html>
+
