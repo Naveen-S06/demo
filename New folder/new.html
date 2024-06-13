@@ -104,6 +104,21 @@
         min-height: 20px; 
         margin-bottom: 5px;
     }
+    #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+    #loading-screen img {
+        position: absolute;
+    }
 
     @media screen and (max-width: 768px) {
         .header h1 {
@@ -148,6 +163,9 @@
         <button class="button_1" id="runButton">Start</button>
         <button class="button_1" id="stopButton">Stop</button>
         <button class="button_1" id="graphButton">Graph</button>
+    </div>
+    <div id="loading-screen">
+        <img src="loading.gif" alt="Loading...">
     </div>
 </div>
 
@@ -242,6 +260,7 @@
         const voltage = document.getElementById('slider3').value;
         const coolantFlow = 1;
 
+        //
         fetch('http://34.100.156.228:3389/run-motor', {
             method: 'POST',
             headers: {
@@ -272,6 +291,7 @@
             document.getElementById('regenOutput').textContent = regenOutput;
         })
         .catch(error => console.error('Error:', error));
+        
     }
 
     // Event listeners for the motor selection buttons
